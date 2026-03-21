@@ -1,4 +1,4 @@
-# ADR-004: Product Strategy & Vole Alignment
+# ADR-004: Product Strategy
 
 **Status:** Accepted
 **Date:** 2026-03-21
@@ -8,9 +8,11 @@
 
 Owl is not just a dashboard — it's a potential acquisition target for **Vole**, a YC-backed (F24) stablecoin-native cross-border payment infrastructure company. Vole enables African businesses, freelancers, and remote workers to receive international payments in USD/EUR and settle to stablecoins.
 
-Every architectural and product decision in Owl must be evaluated against two questions:
-1. Does this make Owl useful as a standalone product?
-2. Does this make Owl attractive as an integration or acquisition for Vole?
+Every architectural and product decision in Owl is evaluated on one question first:
+
+**Is this the right engineering decision?**
+
+Vole compatibility is a secondary benefit, never the primary driver. A perfectly engineered product is more attractive than a copycat. We build better — not the same.
 
 ### What Vole Has (Public Intel)
 
@@ -42,7 +44,7 @@ Vole handles **payments and wallets** — not market intelligence. There is no:
 
 ## Decision
 
-Owl will be built as a **market intelligence platform** with an API-first architecture that mirrors Vole's engineering patterns. The product should be useful standalone but designed for seamless integration into Vole's ecosystem.
+Owl will be built as a **production-grade market intelligence platform**. Every decision is made on independent engineering merit. Where our choices happen to be compatible with Vole's ecosystem, that's a strategic bonus — not the reason we made the choice.
 
 ---
 
@@ -75,52 +77,38 @@ graph TB
     WIDGET -->|"REST (public subset)"| API
 ```
 
-**Why API-first matters for Vole:**
-- Vole's team generates SDKs from OpenAPI specs (their `saligen` tool). If Owl exposes an OpenAPI spec, Vole can generate an Owl SDK in 7 languages using their existing toolchain — zero integration friction.
-- Vole's dashboard could embed Owl data with a few API calls, no UI migration needed.
-- API-first means Owl's value isn't locked in the frontend — it's in the data layer.
+**Why API-first:**
+- Owl's value is the data and intelligence, not the frontend. An API-first design means any consumer (our own UI, third-party dashboards, mobile apps, trading bots) can access the same capabilities.
+- OpenAPI spec enables automatic SDK generation. Any integrator (including Vole, who uses OpenAPI-based SDK generation with their `saligen` tool) can generate a typed client in their language of choice.
+- The frontend becomes a reference implementation, not the product itself. This is the difference between a project and a platform.
 
-### 2. Matching Vole's API Patterns
+### 2. Production API Standards
 
-Adopting Vole's exact API conventions reduces integration friction to near-zero.
+A market data API handling financial information must follow established API design principles. These aren't novel — they're industry-standard patterns used by Stripe, Twilio, Coinbase, and every serious API product.
 
 ```mermaid
-graph LR
-    subgraph Vole_Patterns["Vole's API Patterns"]
-        V1["Versioning: /v0"]
-        V2["Auth: x-client-key / x-client-secret"]
-        V3["Key format: pk_test_ / sk_test_"]
-        V4["Idempotency: UUID v4, 24hr expiry"]
-        V5["Rate limit: X-RateLimit-Remaining"]
-        V6["Webhooks: event-driven, scoped"]
+graph TB
+    subgraph Standards["Owl API Standards"]
+        S1["API Versioning<br/>/api/v0 → /api/v1<br/>Why: Breaking changes without<br/>breaking consumers"]
+        S2["API Key Auth<br/>x-owl-key / x-owl-secret<br/>Why: Stateless, rotatable,<br/>environment-separated"]
+        S3["Environment Separation<br/>owl_test_ / owl_live_<br/>Why: Safe development without<br/>touching production data"]
+        S4["Idempotency<br/>Idempotency-Key header (UUID v4)<br/>Why: Safely retry failed writes<br/>without duplicate side effects"]
+        S5["Rate Limiting<br/>X-RateLimit-Remaining + Retry-After<br/>Why: Protect upstream APIs (CoinGecko<br/>10K/mo) and prevent abuse"]
+        S6["Webhooks<br/>Event-driven, scoped permissions<br/>Why: Programmatic consumers react<br/>to market events in real-time"]
     end
-
-    subgraph Owl_Patterns["Owl Mirrors"]
-        O1["Versioning: /api/v0"]
-        O2["Auth: x-owl-key / x-owl-secret"]
-        O3["Key format: owl_test_ / owl_live_"]
-        O4["Idempotency: UUID v4, 24hr expiry"]
-        O5["Rate limit: X-RateLimit-Remaining"]
-        O6["Webhooks: peg alerts, price alerts"]
-    end
-
-    V1 -.->|"mirrors"| O1
-    V2 -.->|"mirrors"| O2
-    V3 -.->|"mirrors"| O3
-    V4 -.->|"mirrors"| O4
-    V5 -.->|"mirrors"| O5
-    V6 -.->|"mirrors"| O6
 ```
 
-| Pattern | Vole Implementation | Owl Implementation | Why Mirror |
-|---------|-------------------|-------------------|-----------|
-| API versioning | `/v0` | `/api/v0` | Same migration story, same breaking-change discipline |
-| Auth headers | `x-client-key` / `x-client-secret` | `x-owl-key` / `x-owl-secret` | Ops team recognizes the pattern instantly |
-| Key prefixes | `pk_test_` / `sk_test_` / `pk_live_` / `sk_live_` | `owl_test_` / `owl_live_` | Same key management UX, same env var conventions |
-| Idempotency | `Idempotency-Key` header, UUID v4, 24hr expiry | Identical | Same middleware can validate both APIs |
-| Rate limiting | 100 req/min, `X-RateLimit-Remaining` + `Retry-After` | Same headers, configurable limits | Same client retry logic works for both |
-| Webhooks | Event-driven, scope-based permissions | Same structure for peg/price alerts | Vole's webhook infrastructure can consume Owl events |
-| Error format | Standard HTTP codes + JSON error body | Match structure | Same error handling in client SDKs |
+| Pattern | Implementation | Why (Independent Reasoning) |
+|---------|---------------|---------------------------|
+| API versioning | `/api/v0` prefix | We will make breaking changes. Versioning lets us iterate without destroying consumers. `/v0` signals pre-stable — when we're confident, we ship `/v1`. |
+| API key auth | `x-owl-key` / `x-owl-secret` headers | Stateless authentication for machine-to-machine use. Keys are rotatable without session invalidation. Separate from user auth (Better Auth handles that). |
+| Environment separation | `owl_test_` / `owl_live_` prefixed keys | Developers must be able to build integrations without hitting real market data endpoints. Test keys return mock/delayed data. Live keys hit real APIs. This is table stakes for any API product. |
+| Idempotency | `Idempotency-Key` header, UUID v4, 24hr expiry | Write operations (create alert, add webhook) must be safely retryable. Network failures happen. Without idempotency, a retry creates duplicates. 24hr expiry prevents stale key conflicts. |
+| Rate limiting | `X-RateLimit-Remaining` + `Retry-After` headers | We proxy CoinGecko (30 calls/min, 10K/mo). Uncontrolled API consumers could burn our upstream budget in hours. Rate limiting protects us and gives consumers clear signals to back off. |
+| Webhooks | Event-driven with scope-based permissions | Email alerts are for humans. Webhooks are for systems. A trading bot or payment processor needs programmatic notification of peg deviations — not an email. Scoped permissions prevent webhook endpoints from receiving events they don't need. |
+| Error format | RFC 7807 Problem Details JSON | Structured errors with `type`, `title`, `status`, `detail`, and `instance`. Industry standard. Machines parse it, humans read it. |
+
+**Note on Vole compatibility:** Several of these patterns happen to align with Vole's API design. This is not because we copied them — it's because these are industry-standard patterns that any well-engineered API uses. The compatibility is a natural consequence of both products following good API design principles.
 
 ### 3. Full Stablecoin Coverage
 
@@ -292,45 +280,146 @@ sequenceDiagram
 | **NEW** | — | Public API (`/api/v0/`) with OpenAPI spec, API keys, rate limiting |
 | **NEW** | — | Embed widget (peg monitor / price ticker) |
 | **NEW** | — | Webhook system (peg alerts, price alerts) |
+| **NEW** | — | Audit logging (who queried what, when) |
+| **NEW** | — | LLM-friendly API docs (`/llms.txt`) |
+
+---
+
+## Additional Engineering Decisions
+
+### 8. Monitoring & Status
+
+A financial data platform without uptime monitoring is amateur hour. Users and API consumers need to know if the service is degraded.
+
+**Decision:**
+- Health check endpoints: `/api/v0/health` (authenticated, detailed) and `/api/v0/health/public` (unauthenticated, simple status)
+- Status page for public-facing uptime visibility
+- Uptime monitoring on critical paths: API availability, Binance WS connection, Finnhub relay (CF DO), CoinGecko reachability
+
+**Why:** If a stablecoin depegs at 2am and our peg monitor is down without anyone knowing, the entire product's value proposition is destroyed. Monitoring isn't optional for financial data.
+
+**Tooling decision deferred to ADR-005.** Better Stack, Checkly, or self-hosted — evaluated on merit, not on what Vole uses.
+
+### 9. Audit Logging
+
+Every API request should be traceable. For a financial data product, this isn't just good engineering — it's expected.
+
+**What we log:**
+- API key used (hashed, never plaintext)
+- Endpoint called
+- Timestamp
+- Response status
+- IP address (hashed for privacy)
+- Rate limit state at time of request
+
+**What we don't log:**
+- Full request/response bodies (privacy + storage cost)
+- User browsing behavior on the frontend (not our business)
+
+**Why:** If an API consumer reports incorrect data delivery, we need to trace exactly what happened. If we detect abuse, we need evidence. If Owl is ever evaluated for acquisition, audit logging signals operational maturity.
+
+**Storage:** Append-only table in Postgres. Retention: 90 days. Older logs archived or purged. This is a simple `INSERT` on every API request — no complex infrastructure needed.
+
+### 10. SDK Generation Strategy
+
+Owl exposes an OpenAPI 3.1 spec auto-generated from Hono route definitions via `@hono/zod-openapi`. This spec is the single source of truth.
+
+```mermaid
+graph LR
+    subgraph Source["Source of Truth"]
+        HONO["Hono Routes<br/>+ Zod Schemas"]
+    end
+
+    subgraph Generated["Auto-Generated"]
+        SPEC["OpenAPI 3.1 Spec<br/>/api/v0/openapi.json"]
+        DOCS["Scalar UI<br/>/api/v0/docs"]
+        LLM["LLM Docs<br/>/api/v0/llms.txt"]
+    end
+
+    subgraph Downstream["Downstream (Future)"]
+        SDK_TS["TypeScript SDK"]
+        SDK_PY["Python SDK"]
+        SDK_GO["Go SDK"]
+    end
+
+    HONO --> SPEC
+    SPEC --> DOCS
+    SPEC --> LLM
+    SPEC --> SDK_TS
+    SPEC --> SDK_PY
+    SPEC --> SDK_GO
+```
+
+**Why auto-generated:**
+- Docs that drift from code are worse than no docs. Auto-generation makes drift impossible.
+- The OpenAPI spec is machine-readable. Any tool (Postman, Insomnia, `openapi-generator`, Vole's `saligen`) can consume it.
+- SDK generation is a `npx openapi-generator-cli generate` command away. We don't need to build SDKs now — we need to make it trivial to build them later.
+
+### 11. LLM-Friendly Documentation
+
+Serve a `/api/v0/llms.txt` endpoint — a plaintext, structured summary of the API designed for consumption by AI tools and coding assistants.
+
+**Why:** Developers increasingly use AI to integrate APIs. An LLM-consumable doc means a developer can paste our `/llms.txt` into their AI tool and get working integration code immediately. This is a competitive moat that 99% of API products don't have yet.
+
+**Implementation:** Generated from the same OpenAPI spec. One extra route, zero maintenance overhead.
+
+### 12. Sandbox / Test Mode
+
+API keys prefixed with `owl_test_` activate test mode:
+
+| Behavior | Test Mode | Live Mode |
+|----------|----------|-----------|
+| Market data | Deterministic mock data (not random — reproducible) | Real-time from Binance/Finnhub/CoinGecko |
+| Peg deviations | Simulated deviations on a schedule (for testing alerts) | Real market data |
+| Rate limits | Same limits as production (catches bugs early) | Same |
+| Webhooks | Delivered to test endpoint, logged in dashboard | Delivered to production endpoint |
+| Database | Isolated test schema or flag | Production schema |
+
+**Why not just "use production with low rate limits"?**
+- Developers need predictable data to write tests. Real market data is unpredictable.
+- Simulated peg deviations let consumers test their alert handling without waiting for an actual depeg.
+- Isolated test mode prevents accidental pollution of production data.
 
 ---
 
 ## Revised Staged Implementation
 
-| Stage | Feature | Vole Alignment |
-|-------|---------|---------------|
-| **1** | Scaffold + Auth + DB | API versioning (`/v0`), rate limiting middleware, idempotency middleware |
-| **2** | Market Data + Dashboard | Multi-currency support, CoinGecko exchange rates, user currency preference |
-| **3** | Real-Time Prices | Binance direct + CF DO relay. Peg monitoring for all 7 stablecoins |
-| **4** | Portfolio Tracker | Multi-currency holdings and P&L |
-| **5** | Watchlists + Alerts | Alert rules + **webhook delivery** |
-| **6** | Peg Monitor | Full peg dashboard, multi-peg (USD + EUR), deviation history |
-| **7** | Correlation Engine | Same |
-| **8** | Settlement Optimizer | Multi-currency, multi-chain, gas comparison, Base prioritized |
-| **9** | Public API + Docs | OpenAPI spec via `@hono/zod-openapi`, Scalar UI, API key management |
-| **10** | Embed Widget | Lightweight peg monitor / ticker for third-party embedding |
+| Stage | Feature | What Ships |
+|-------|---------|-----------|
+| **1** | Scaffold + Auth + DB | Next.js + Hono mounted, Better Auth, Drizzle + Supabase Postgres, API versioning (`/v0`), rate limiting middleware, health endpoints, audit logging table |
+| **2** | Market Data + Dashboard | CoinGecko integration with caching, coin list + search, global stats, trending, multi-currency support (user preference), coin detail with charts |
+| **3** | Real-Time Prices | Binance direct WS from browser, Finnhub relay on CF DO (lazy connection), client-side normalizer, live ticker, reconnection logic |
+| **4** | Portfolio Tracker | CRUD portfolios/holdings, multi-currency P&L calculation, unified stock + crypto view |
+| **5** | Watchlists + Alerts | Watchlist CRUD, alert rules, in-app notifications, email via Resend, **webhook delivery** |
+| **6** | Peg Monitor | All 7 stablecoins, multi-peg (USD + EUR), deviation threshold alerts, historical deviation charts |
+| **7** | Correlation Engine | Cross-market correlation (BTC vs NASDAQ, ETH vs tech), correlation matrix, configurable time windows |
+| **8** | Settlement Optimizer | Multi-currency paths, multi-chain comparison (7 chains, Base prioritized), gas fee analysis |
+| **9** | Public API + Docs | API key management (test/live), OpenAPI spec + Scalar UI, `/llms.txt`, sandbox test mode |
+| **10** | Embed Widget | Lightweight peg monitor / price ticker, configurable, iframe or web component |
 
 ---
 
 ## Consequences
 
 ### Positive
-- Owl fills an explicit gap in Vole's product (market intelligence)
-- Matching API patterns means near-zero integration friction
-- API-first design means Owl's value extends beyond the frontend
-- Webhook system makes Owl operationally critical (not just informational)
-- Multi-currency/multi-chain awareness demonstrates deep understanding of Vole's domain
+- **Standalone value:** Every feature is useful to any user, regardless of Vole
+- **API-first:** Owl's value is in the data layer, not locked in a frontend
+- **Production-grade:** Audit logging, rate limiting, idempotency, monitoring, test mode — these signal operational maturity
+- **Webhook system:** Makes Owl programmatically consumable, not just a visual dashboard
+- **Multi-currency/multi-chain:** Serves a global audience, not just US/USD users
+- **Vole compatibility:** Natural consequence of good engineering, not the goal
 
 ### Negative
 - Scope is larger — more features to build and maintain
 - API key management and rate limiting add complexity to stage 1
 - Multi-currency adds complexity to every price display
 - 7 stablecoins × multiple chains = more data to monitor and cache
+- Audit logging adds a write to every API request (mitigated: async insert, minimal overhead)
 
 ### Risks
-- Over-optimizing for Vole at the expense of standalone product value (mitigated: all features are useful to any user, not just Vole)
-- Vole's API patterns may change (mitigated: our patterns are sensible engineering regardless)
-- USDB and PYUSD may have limited Binance/CoinGecko coverage (needs verification)
+- USDB and PYUSD may have limited Binance/CoinGecko coverage (needs verification in implementation)
+- Sandbox/test mode adds a parallel code path that must stay in sync with production behavior
+- Scope creep — 10 stages is ambitious for a solo dev. Stages 1-6 are the MVP. Stages 7-10 are the platform play.
 
 ## Related Decisions
 - [ADR-001: API Provider Selection](./001-api-provider-selection.md)
