@@ -9,7 +9,7 @@
 Owl requires a system architecture that supports:
 - Real-time price streaming for both stocks and crypto
 - A type-safe API layer for portfolio management, market data, and alerts
-- Authentication that works across the Vercel frontend and a minimal Finnhub relay on Railway
+- Authentication that works across the Vercel frontend and a Finnhub relay on Cloudflare Durable Objects
 - Aggressive caching to stay within CoinGecko's free tier rate limits (30 calls/min, 10K/month)
 - Staged delivery where each stage ships a working feature
 
@@ -25,7 +25,7 @@ Key constraints:
 - **API:** Hono with RPC client, mounted inside Next.js catch-all route
 - **Auth:** Better Auth
 - **Real-time (crypto):** Direct browser WebSocket to Binance (no backend)
-- **Real-time (stocks):** Minimal Finnhub relay on Railway (API key hidden server-side)
+- **Real-time (stocks):** Finnhub relay on Cloudflare Workers + Durable Objects (API key hidden server-side, lazy connection pattern)
 
 ---
 
@@ -64,14 +64,16 @@ graph TB
         MKT --> CACHE
     end
 
-    subgraph Railway["Railway (Minimal Relay)"]
-        RELAY["Finnhub Relay"]
-        FH_HANDLER["Finnhub WS Handler<br/>• upstream connection<br/>• auto-reconnect"]
+    subgraph Cloudflare["Cloudflare Workers + Durable Objects"]
+        WORKER["Hono Worker<br/>(Edge Router)"]
+        DO["Durable Object<br/>(Finnhub Relay)"]
+        FH_HANDLER["Finnhub WS Handler<br/>• lazy connection<br/>• auto-reconnect"]
         JWT_VAL["JWT Validator"]
         BCAST["Broadcaster"]
 
-        RELAY --> FH_HANDLER
-        RELAY --> JWT_VAL
+        WORKER --> DO
+        DO --> FH_HANDLER
+        DO --> JWT_VAL
         FH_HANDLER --> BCAST
     end
 
@@ -88,7 +90,7 @@ graph TB
 
     RPC -->|"HTTP/RPC"| HONO
     BN_WS -->|"WSS (direct, no auth)"| BINANCE
-    FH_WS -->|"WSS + JWT"| JWT_VAL
+    FH_WS -->|"WSS + JWT"| WORKER
     FH_HANDLER -->|"WSS + API key<br/>(hidden server-side)"| FINNHUB
 
     CACHE -->|"REST (cached)"| COINGECKO
@@ -106,7 +108,7 @@ The browser manages **two** WebSocket connections independently:
 | Connection | Target | Auth Required | Goes Through Backend |
 |-----------|--------|--------------|---------------------|
 | Crypto prices | Binance directly | No (public API) | No |
-| Stock prices | Finnhub relay on Railway | JWT (to access relay) | Yes (API key hidden) |
+| Stock prices | Finnhub relay on Cloudflare DO | JWT (to access relay) | Yes (API key hidden) |
 
 A client-side normalizer merges both streams into a unified `MarketUpdate` shape so the rest of the UI doesn't know or care where data came from.
 
@@ -129,7 +131,7 @@ graph LR
             SAPI["api/<br/>routes + RPC definitions"]
             SVC["services/<br/>portfolio.ts | market.ts<br/>correlation.ts | alert.ts"]
             DB["db/<br/>schema.ts | index.ts<br/>migrations/"]
-            WS["ws/<br/>relay.ts (entry point)<br/>finnhub.ts (upstream handler)<br/>broadcast.ts (fan-out)"]
+            WS["relay/ (deploys to CF Workers)<br/>wrangler.jsonc<br/>src/index.ts (Hono Worker)<br/>src/finnhub-relay.ts (DO class)"]
         end
 
         subgraph Lib["lib/ — Shared"]
@@ -141,7 +143,7 @@ graph LR
     end
 ```
 
-Note: The `ws/` directory is smaller than in previous iterations — no Binance handler, no normalizer on the server. The relay only handles Finnhub. Normalization lives in client-side hooks.
+Note: The `relay/` directory is a separate deployable unit targeting Cloudflare Workers. No Binance handler on the server — the browser connects to Binance directly. Normalization lives in client-side hooks.
 
 ---
 
@@ -156,7 +158,7 @@ sequenceDiagram
     participant C as Cache Layer
     participant CG as CoinGecko REST
     participant BN as Binance (Direct WS)
-    participant R as Finnhub Relay (Railway)
+    participant R as Finnhub Relay (CF DO)
     participant FH as Finnhub (Upstream)
 
     Note over B,FH: Phase 1 — Initial Data Load (HTTP)
@@ -270,7 +272,7 @@ Note: Peg monitoring is now **client-side** since the browser already has the di
 sequenceDiagram
     participant B as Browser
     participant V as Vercel (Hono + Better Auth)
-    participant R as Railway (Finnhub Relay)
+    participant R as CF Durable Object (Finnhub Relay)
     participant DB as Supabase (Postgres)
 
     Note over B,DB: Step 1 — Login
@@ -457,7 +459,7 @@ graph TB
         FH["Finnhub WS<br/>wss://ws.finnhub.io?token=API_KEY"]
     end
 
-    subgraph Relay["Finnhub Relay (Bun on Railway)"]
+    subgraph Relay["Finnhub Relay (Cloudflare Durable Object)"]
         CM["Connection Manager<br/>• connect to Finnhub on startup<br/>• auto-reconnect on disconnect<br/>• health check endpoint"]
         SM["Subscription Manager<br/>• track client → symbols mapping<br/>• ref-count: subscribe upstream<br/>  only when first client needs symbol<br/>• unsubscribe upstream when<br/>  last client leaves symbol"]
         JWT["JWT Validator<br/>• shared signing secret with Vercel<br/>• validate on WS upgrade<br/>• extract userId"]
@@ -605,7 +607,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph Failures["Failure Scenarios"]
-        F1["Finnhub Relay Down<br/>(Railway)"]
+        F1["Finnhub Relay Down<br/>(CF DO evicted)"]
         F2["CoinGecko Rate Limited"]
         F3["Binance WS Disconnects<br/>(24hr expiry)"]
         F4["Supabase Down"]
@@ -621,7 +623,7 @@ graph TB
     end
 
     subgraph Mitigation["Mitigation"]
-        M1["Frontend polls Finnhub REST<br/>via Hono API every 60s.<br/>Show 'delayed' indicator."]
+        M1["CF recreates DO on next request.<br/>Browser auto-reconnects.<br/>~100ms recovery. If persistent,<br/>fall back to Finnhub REST polling."]
         M2["Serve stale from cache.<br/>Show 'cached' indicator.<br/>Retry with exponential backoff."]
         M3["Browser auto-reconnects<br/>with exponential backoff.<br/>Pre-schedule at 23h 50m."]
         M4["Return 503 with clear error.<br/>Dashboard continues working<br/>(no DB needed for prices)."]
@@ -667,7 +669,7 @@ gantt
 |-------|---------|-----------------|
 | **1** | Scaffold + Auth + DB | Next.js + Hono mounted, Better Auth (email/password), Drizzle schema + Supabase Postgres, base layout |
 | **2** | Market Data + Dashboard | CoinGecko integration with caching, coin list + search, global stats, trending, coin detail with charts |
-| **3** | Real-Time Prices | Browser direct to Binance WS, Finnhub relay on Railway (Bun), client-side normalizer hook, live ticker, reconnection logic |
+| **3** | Real-Time Prices | Browser direct to Binance WS, Finnhub relay on Cloudflare DO (lazy connection), client-side normalizer hook, live ticker, reconnection logic |
 | **4** | Portfolio Tracker | CRUD portfolios/holdings, P&L calculation against live + cached prices, unified stock + crypto view |
 | **5** | Watchlists + Alerts | Watchlist CRUD, alert rules, in-app notifications, email via Resend |
 | **6** | Peg Monitor | USDC/USDT peg tracking (client-side via Binance stream), deviation alerts, historical peg chart |
@@ -679,19 +681,20 @@ gantt
 ## Consequences
 
 ### Positive
-- **Minimal backend surface area** — Railway only runs Finnhub relay, not a full WS relay for both providers
+- **Minimal backend surface area** — Cloudflare DO only runs Finnhub relay, not a full WS relay for both providers
 - **No unnecessary middleware** — Binance data flows directly to the browser with zero latency overhead
 - **No extra vendor dependencies** — no Ably/Pusher SDK, no message limits, no vendor risk
 - **Type safety end-to-end** via Hono RPC
-- **$5/mo total infra cost** — Railway hobby for a small Finnhub relay
-- **Each service independently testable** — Binance connection works without Railway, API works without either WS source
+- **$0 relay infra cost** — Cloudflare DO free tier covers market-hours usage with margin
+- **Each service independently testable** — Binance connection works without the relay, API works without either WS source
 - **Strong interview narrative** — demonstrates targeted decision-making based on actual constraints, not over-engineering
 
 ### Negative
 - **Two WebSocket connections in the browser** — slightly more client-side complexity, but manageable via hooks
 - **Client-side normalization** — if the unified schema changes, it's a frontend deploy, not a backend-only change
-- **Cross-origin auth still needed** for the Finnhub relay (JWT validation)
+- **Cross-origin auth still needed** for the Finnhub relay on CF DO (JWT validation)
 - **In-memory cache on Vercel is lost on cold starts** — first request after cold start hits CoinGecko
+- **Cloudflare DO platform lock-in** — relay uses DO-specific APIs (mitigated by documented Railway fallback in ADR-003)
 
 ### Risks
 - **Binance geo-restriction** — blocked in US. Mitigation: region-aware routing to Binance.US (fewer pairs but same API shape)
@@ -699,7 +702,9 @@ gantt
 - **Finnhub 50-symbol limit** — shared across all connected clients via ref counting. Could be hit with many users watching different symbols
 - **CoinGecko 10K monthly budget** — tight but manageable with proper TTLs. Misconfigured cache could exhaust it mid-month
 - **Vercel function timeout (300s)** on hobby plan — correlation computation on large historical ranges may need precomputation
+- **CF DO can be evicted anytime** — Cloudflare may restart DOs for infrastructure reasons. Reconnection logic handles this, but brief data gaps are possible
 
 ## Related Decisions
 - [ADR-001: API Provider Selection](./001-api-provider-selection.md)
-- [ADR-003: WebSocket Hosting Decision](./003-websocket-hosting.md)
+- [ADR-003: WebSocket Hosting Decision](./003-websocket-hosting.md) — Cloudflare DO selected over Railway, Fly.io, Render, and Ably
+- ADR-004: Tech Stack Choices — pending
