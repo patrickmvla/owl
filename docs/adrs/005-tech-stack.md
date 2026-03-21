@@ -110,7 +110,7 @@ graph TB
         RHF["React Hook Form + Zod resolver"]
         DAYJS["dayjs (timezone only)"]
         INTL["Intl.NumberFormat / DateTimeFormat (native)"]
-        LUCIDE["Lucide React (icons)"]
+        PHOSPHOR["Phosphor Icons"]
         AUTOANIM["Auto-Animate (list reorder)"]
     end
 ```
@@ -128,7 +128,7 @@ graph TB
 | Client state | Zustand | ~1.2 KB | Real-time WS prices, UI state. `useSyncExternalStore` = no tearing. |
 | Dates (timezone) | dayjs utc + timezone | ~3 KB | Market hours conversion (EST/CET/EAT) only. |
 | List animations | Auto-Animate | ~1.9 KB | Watchlist reorder, item add/remove. |
-| Icons | Lucide React | ~0.5 KB/icon | Tree-shakeable, ~20-30 icons = ~12 KB. |
+| Icons | Phosphor Icons | ~0.5-0.9 KB/icon | Tree-shakeable, 6 weights, ~9,000 icons. |
 | UI primitives | shadcn/ui (Radix) | ~0 KB runtime | Copy-paste, not npm. Radix primitives are peer deps of shadcn components we use. |
 | Sparklines | Custom SVG | 0 KB | 30-40 lines of React. No library. |
 | Number formatting | Intl.NumberFormat | 0 KB | Native API, handles 35+ currencies. |
@@ -539,13 +539,24 @@ Framer Motion is justified when you need coordinated layout animations with shar
 
 ---
 
-### 16. Lucide React (Icons) + Inline SVGs
+### 16. Phosphor Icons + Inline SVGs
 
-**Decision:** Lucide for standard UI icons (already in shadcn ecosystem). Inline SVGs for currency symbols.
+**Decision:** Phosphor Icons (`@phosphor-icons/react`) for all UI icons. Inline SVGs for currency symbols not covered by Phosphor.
 
-**Why Lucide:** Tree-shakeable, ~0.5 KB/icon gzipped. Already a peer dependency of shadcn/ui. No second icon library needed.
+**Why Phosphor over Lucide:**
+| | Phosphor | Lucide |
+|--|---------|--------|
+| Icon count | ~9,000 | ~1,500 |
+| Weights | 6 (thin, light, regular, bold, fill, duotone) | 1 (stroke-based) |
+| Active state via weight | `regular` → `bold` (no color change needed) | Not possible — only stroke width |
+| Financial icons | CurrencyDollar, CurrencyEur, TrendUp/Down, Wallet, ArrowsLeftRight | DollarSign, Euro, TrendingUp/Down, Wallet |
+| Per-icon gzipped | ~0.5-0.9 KB | ~0.4-0.7 KB |
 
-**Why inline SVGs for currencies:** No icon library has ZMW (Zambian Kwacha) or MWK (Malawian Kwacha) symbols. Unicode characters (`₦`, `K`) or small inline SVGs handle these. Adding Phosphor Icons (2.7 MB full package, tree-shaking risk) for a handful of currency symbols is not justified.
+**The decisive factor:** Phosphor's 6 weights enable the icon rail active state pattern — `weight="regular"` for inactive, `weight="bold"` for active. This is a subtle but effective visual signal (used by Linear) that doesn't require color changes. Lucide's single-weight design can't do this.
+
+**Tree-shaking requirement:** Phosphor's full package is 2.7 MB. You MUST use named imports (`import { TrendUp } from '@phosphor-icons/react'`) — never barrel imports. With tree-shaking, you pay only for icons you use. Verified working with Next.js App Router + Turbopack.
+
+**Inline SVGs for currencies:** Unicode characters (`₦`, `K`) for Naira, Kwacha, etc. No icon library covers all 35+ currency symbols we need.
 
 ---
 
@@ -572,7 +583,7 @@ These components don't exist in any library. They are the building blocks of eve
 | Component | Purpose | Dependencies |
 |-----------|---------|-------------|
 | `PriceDisplay` | Tabular-nums, flash animation, direction color, currency formatting | Intl.NumberFormat, CSS |
-| `ChangeIndicator` | "+2.34%" in teal / "-1.12%" in red with arrow | Lucide (TrendingUp/Down) |
+| `ChangeIndicator` | "+2.34%" in teal / "-1.12%" in red with arrow | Phosphor (TrendUp/TrendDown) |
 | `PegHealthBadge` | HEALTHY/WARNING/CRITICAL status with pulse on critical | CSS animations |
 | `Sparkline` | Inline SVG polyline for table cells | Custom SVG, no library |
 | `CurrencyInput` | Locale-aware number input with currency formatting | RHF integration |
