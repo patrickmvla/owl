@@ -1,9 +1,11 @@
 "use client";
 
 import { useBinanceWs } from "../hooks/use-binance-ws";
+import { PEG_STREAM_SYMBOLS } from "@/lib/constants/stablecoins";
 
 /** Default symbols to stream on the dashboard */
 const DEFAULT_SYMBOLS = [
+  // Major crypto
   "BTC/USDT",
   "ETH/USDT",
   "SOL/USDT",
@@ -24,6 +26,8 @@ const DEFAULT_SYMBOLS = [
   "APT/USDT",
   "ARB/USDT",
   "OP/USDT",
+  // Stablecoins for peg monitoring
+  ...PEG_STREAM_SYMBOLS,
 ];
 
 interface MarketStreamProps {

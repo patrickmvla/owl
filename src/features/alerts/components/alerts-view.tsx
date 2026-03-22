@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Trash, Bell, BellSlash, X } from "@phosphor-icons/react";
+import { useState, useMemo } from "react";
+import { Plus, Trash, Bell, BellSlash, X, Lightning } from "@phosphor-icons/react";
 import { Dialog } from "radix-ui";
 import {
   Select,
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/ui/components/select";
 import { useAlertRules, useCreateAlert, useToggleAlert, useDeleteAlert } from "../hooks/use-alerts";
+import { usePrice } from "@/features/real-time/stores/price-store";
 import { formatPrice } from "@/lib/utils/format";
 
 const CONDITION_LABELS: Record<string, string> = {
@@ -18,6 +19,44 @@ const CONDITION_LABELS: Record<string, string> = {
   price_below: "Price Below",
   peg_deviation: "Peg Deviation",
 };
+
+function ProximityBadge({ rule }: { rule: any }) {
+  const wsSymbol = `${rule.symbol}/USDT`;
+  const update = usePrice(wsSymbol);
+
+  if (!rule.active) return <span className="text-[10px] text-muted-foreground">inactive</span>;
+
+  if (rule.lastTriggeredAt) {
+    const ago = Date.now() - new Date(rule.lastTriggeredAt).getTime();
+    const hours = Math.floor(ago / 3600000);
+    const label = hours < 1 ? "just now" : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+    return (
+      <span className="flex items-center gap-1 text-[10px] text-warning">
+        <Lightning size={10} weight="fill" />
+        {label}
+      </span>
+    );
+  }
+
+  if (!update) return <span className="text-[10px] text-muted-foreground">no data</span>;
+
+  const threshold = parseFloat(rule.threshold);
+  if (rule.condition === "peg_deviation") {
+    return <span className="text-[10px] text-muted-foreground">peg rule</span>;
+  }
+
+  const distance = Math.abs((update.price - threshold) / threshold) * 100;
+  const isClose = distance < 1;
+  const isNear = distance < 3;
+
+  return (
+    <span className={`text-[10px] tabular-nums ${
+      isClose ? "text-warning font-medium" : isNear ? "text-muted-foreground" : "text-muted-foreground/60"
+    }`}>
+      {distance.toFixed(1)}% away
+    </span>
+  );
+}
 
 function AlertRow({ rule }: { rule: any }) {
   const toggleAlert = useToggleAlert();
@@ -28,7 +67,7 @@ function AlertRow({ rule }: { rule: any }) {
       <div className="flex items-center gap-4">
         <button
           onClick={() => toggleAlert.mutate({ id: rule.id, active: !rule.active })}
-          className={`transition-colors ${rule.active ? "text-foreground" : "text-muted-foreground"}`}
+          className={`cursor-pointer transition-colors ${rule.active ? "text-foreground" : "text-muted-foreground"}`}
         >
           {rule.active ? <Bell size={16} weight="bold" /> : <BellSlash size={16} />}
         </button>
@@ -46,14 +85,90 @@ function AlertRow({ rule }: { rule: any }) {
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
+        <ProximityBadge rule={rule} />
         <span className="label-micro">{rule.notifyVia}</span>
         <button
           onClick={() => deleteAlert.mutate(rule.id)}
-          className="text-muted-foreground hover:text-destructive transition-colors"
+          className="cursor-pointer text-muted-foreground hover:text-destructive transition-colors"
         >
           <Trash size={14} />
         </button>
+      </div>
+    </div>
+  );
+}
+
+function SummaryPills({ rules }: { rules: any[] }) {
+  const counts = useMemo(() => {
+    let active = 0;
+    let triggered = 0;
+    let inactive = 0;
+
+    for (const r of rules) {
+      if (!r.active) {
+        inactive++;
+      } else if (r.lastTriggeredAt) {
+        triggered++;
+      } else {
+        active++;
+      }
+    }
+
+    return { active, triggered, inactive };
+  }, [rules]);
+
+  return (
+    <div className="flex items-center gap-2 border-b border-border px-6 py-2">
+      <span className="inline-flex items-center gap-1 rounded-sm bg-foreground/10 px-2 py-0.5 text-[10px] font-medium text-foreground">
+        {counts.active} Active
+      </span>
+      {counts.triggered > 0 && (
+        <span className="inline-flex items-center gap-1 rounded-sm bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
+          {counts.triggered} Triggered
+        </span>
+      )}
+      {counts.inactive > 0 && (
+        <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+          {counts.inactive} Inactive
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ActivityFeed({ rules }: { rules: any[] }) {
+  const triggered = useMemo(() => {
+    return rules
+      .filter((r: any) => r.lastTriggeredAt)
+      .sort((a: any, b: any) =>
+        new Date(b.lastTriggeredAt).getTime() - new Date(a.lastTriggeredAt).getTime(),
+      )
+      .slice(0, 5);
+  }, [rules]);
+
+  if (triggered.length === 0) return null;
+
+  return (
+    <div className="border-t border-border p-4 space-y-2">
+      <span className="label-micro">Recent Activity</span>
+      <div className="space-y-1.5">
+        {triggered.map((r: any) => {
+          const ago = Date.now() - new Date(r.lastTriggeredAt).getTime();
+          const hours = Math.floor(ago / 3600000);
+          const label = hours < 1 ? "just now" : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+
+          return (
+            <div key={r.id} className="flex items-center gap-2 text-[10px]">
+              <span className="h-1 w-1 rounded-full bg-warning" />
+              <span className="font-medium">{r.symbol}</span>
+              <span className="text-muted-foreground">
+                {CONDITION_LABELS[r.condition]} {r.condition === "peg_deviation" ? `${r.threshold}%` : formatPrice(parseFloat(r.threshold))}
+              </span>
+              <span className="ml-auto text-muted-foreground">{label}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -194,13 +309,18 @@ export function AlertsView() {
         </button>
       </div>
 
+      {rules?.length ? <SummaryPills rules={rules} /> : null}
+
       <div className="flex-1 overflow-auto">
         {!rules?.length ? (
           <div className="py-8 text-center text-xs text-muted-foreground">
             No alert rules yet. Create one to get notified on price changes.
           </div>
         ) : (
-          rules.map((rule: any) => <AlertRow key={rule.id} rule={rule} />)
+          <>
+            {rules.map((rule: any) => <AlertRow key={rule.id} rule={rule} />)}
+            <ActivityFeed rules={rules} />
+          </>
         )}
       </div>
 
