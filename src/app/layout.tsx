@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils/cn";
+import { QueryProvider } from "@/lib/providers/query-provider";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -33,7 +34,9 @@ export default function RootLayout({
         jetbrainsMono.variable,
       )}
     >
-      <body className="h-dvh overflow-hidden">{children}</body>
+      <body className="h-dvh overflow-hidden">
+          <QueryProvider>{children}</QueryProvider>
+      </body>
     </html>
   );
 }
