@@ -7,6 +7,7 @@ import { rateLimitMiddleware } from "./middleware/rate-limit";
 import { auditLogMiddleware } from "./middleware/audit-log";
 import { idempotencyMiddleware } from "./middleware/idempotency";
 import { marketRoutes } from "@/features/market/api/market-routes";
+import { portfolioRoutes } from "@/features/portfolio/api/portfolio-routes";
 
 const app = new OpenAPIHono().basePath("/api");
 
@@ -26,6 +27,7 @@ app.use("/v0/*", auditLogMiddleware);
 
 // Feature routes
 app.route("/v0/market", marketRoutes);
+app.route("/v0/portfolio", portfolioRoutes);
 
 // Health endpoints
 app.get("/v0/health/public", (c) => {

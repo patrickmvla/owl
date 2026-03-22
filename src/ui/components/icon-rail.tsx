@@ -15,6 +15,7 @@ import {
 } from "@phosphor-icons/react";
 import { Tooltip } from "radix-ui";
 import { cn } from "@/lib/utils/cn";
+import { UserMenu } from "@/features/auth/components/user-menu";
 
 interface NavItem {
   href: string;
@@ -93,10 +94,11 @@ export function IconRail() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-1 py-2 border-t border-border">
+        <div className="flex flex-col items-center gap-1 py-2 border-t border-border">
           {bottomItems.map((item) => (
             <RailItem key={item.href} {...item} />
           ))}
+          <UserMenu />
         </div>
       </nav>
     </Tooltip.Provider>

@@ -1,10 +1,12 @@
 import {
   pgTable,
+  pgEnum,
   text,
   timestamp,
   boolean,
   uuid,
   integer,
+  numeric,
 } from "drizzle-orm/pg-core";
 
 // ============================================
@@ -80,8 +82,40 @@ export const auditLog = pgTable("audit_log", {
 });
 
 // ============================================
-// Stage 4+ tables (portfolio, holding, watchlist,
-// alert_rule) will be added in their respective
-// stages. Schema is one file per ADR-006 (Drizzle
-// FK constraints require co-location).
+// Enums
+// ============================================
+
+export const assetTypeEnum = pgEnum("asset_type", ["stock", "crypto"]);
+
+// ============================================
+// Portfolio (Stage 4)
+// ============================================
+
+export const portfolio = pgTable("portfolio", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const holding = pgTable("holding", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  portfolioId: uuid("portfolio_id")
+    .notNull()
+    .references(() => portfolio.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(), // "BTC", "AAPL", "ETH"
+  assetType: assetTypeEnum("asset_type").notNull(),
+  quantity: numeric("quantity", { precision: 20, scale: 8 }).notNull(), // supports crypto decimals
+  avgCostBasis: numeric("avg_cost_basis", { precision: 20, scale: 8 }).notNull(), // avg price paid per unit
+  currency: text("currency").notNull().default("USD"),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// ============================================
+// Stage 5+ tables (watchlist, alert_rule) will
+// be added in their respective stages.
 // ============================================
