@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
+import { PegDashboard } from "@/features/peg/components/peg-dashboard";
 
 export const metadata: Metadata = {
   title: "Peg Monitor",
+  description: "Track stablecoin peg deviations in real-time",
 };
 
-export default function Page() {
-  return (
-    <div className="p-6">
-      <h1 className="text-lg font-semibold tracking-tight">Peg Monitor</h1>
-      <p className="mt-2 text-xs text-muted-foreground">Coming in a later stage.</p>
-    </div>
-  );
+export default function PegPage() {
+  return <PegDashboard />;
 }
