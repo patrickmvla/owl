@@ -44,7 +44,7 @@ function RailItem({ href, label, icon: Icon }: NavItem) {
     : pathname.startsWith(href);
 
   return (
-    <Tooltip.Root>
+    <Tooltip.Root disableHoverableContent>
       <Tooltip.Trigger asChild>
         <Link
           href={href}

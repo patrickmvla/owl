@@ -116,6 +116,61 @@ export const holding = pgTable("holding", {
 });
 
 // ============================================
-// Stage 5+ tables (watchlist, alert_rule) will
-// be added in their respective stages.
+// Watchlist (Stage 5)
+// ============================================
+
+export const watchlist = pgTable("watchlist", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull().default("My Watchlist"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const watchlistItem = pgTable("watchlist_item", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  watchlistId: uuid("watchlist_id")
+    .notNull()
+    .references(() => watchlist.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(),
+  assetType: assetTypeEnum("asset_type").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+});
+
+// ============================================
+// Alerts (Stage 5)
+// ============================================
+
+export const alertConditionEnum = pgEnum("alert_condition", [
+  "price_above",
+  "price_below",
+  "peg_deviation",
+]);
+
+export const notifyChannelEnum = pgEnum("notify_channel", [
+  "in_app",
+  "email",
+  "webhook",
+]);
+
+export const alertRule = pgTable("alert_rule", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  symbol: text("symbol").notNull(),
+  assetType: assetTypeEnum("asset_type").notNull(),
+  condition: alertConditionEnum("condition").notNull(),
+  threshold: numeric("threshold", { precision: 20, scale: 8 }).notNull(),
+  notifyVia: notifyChannelEnum("notify_via").notNull().default("in_app"),
+  active: boolean("active").notNull().default(true),
+  lastTriggeredAt: timestamp("last_triggered_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ============================================
+// Stage 6+ tables will be added in their
+// respective stages.
 // ============================================

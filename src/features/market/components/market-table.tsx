@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { Star } from "@phosphor-icons/react";
 import { useCoinsMarket } from "../hooks/use-coins-market";
+import { useWatchlistSymbols } from "@/features/watchlist/hooks/use-watchlist-symbols";
 import { formatPrice, formatPercent, formatCompact } from "@/lib/utils/format";
 import { Sparkline } from "@/ui/primitives/sparkline";
 
@@ -11,6 +13,7 @@ interface MarketTableProps {
 
 export function MarketTable({ limit }: MarketTableProps) {
   const { data: coins, isLoading } = useCoinsMarket("usd", 1, limit ?? 50);
+  const { watchedSymbols, toggleSymbol } = useWatchlistSymbols();
 
   if (isLoading) {
     return (
@@ -29,6 +32,7 @@ export function MarketTable({ limit }: MarketTableProps) {
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-border text-muted-foreground">
+            <th className="py-2 pr-1 w-6" />
             <th className="label-micro py-2 pr-2 text-left w-8">#</th>
             <th className="label-micro py-2 pr-4 text-left">Name</th>
             <th className="label-micro py-2 px-4 text-right">Price</th>
@@ -42,12 +46,29 @@ export function MarketTable({ limit }: MarketTableProps) {
           {coins.map((coin) => {
             const change = coin.price_change_percentage_24h;
             const isPositive = (change ?? 0) >= 0;
+            const isWatched = watchedSymbols.has(coin.symbol.toUpperCase());
 
             return (
               <tr
                 key={coin.id}
                 className="border-b border-border/50 hover:bg-muted/50 transition-colors"
               >
+                <td className="py-2.5 pr-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleSymbol(coin.symbol);
+                    }}
+                    className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={isWatched ? `Remove ${coin.symbol} from watchlist` : `Add ${coin.symbol} to watchlist`}
+                  >
+                    <Star
+                      size={14}
+                      weight={isWatched ? "fill" : "regular"}
+                      className={isWatched ? "text-warning" : ""}
+                    />
+                  </button>
+                </td>
                 <td className="py-2.5 pr-2 text-muted-foreground tabular-nums">
                   {coin.market_cap_rank}
                 </td>
