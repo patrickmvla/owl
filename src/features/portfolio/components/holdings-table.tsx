@@ -87,9 +87,9 @@ export function HoldingsTable({ portfolioId }: HoldingsTableProps) {
       holdings.map((h: any) => ({
         id: h.id,
         symbol: h.symbol,
-        assetType: h.asset_type,
+        assetType: h.assetType,
         quantity: h.quantity,
-        avgCostBasis: h.avg_cost_basis,
+        avgCostBasis: h.avgCostBasis,
         currency: h.currency,
       })),
       prices,
