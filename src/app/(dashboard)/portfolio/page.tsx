@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
+import { PortfolioView } from "@/features/portfolio/components/portfolio-view";
 
 export const metadata: Metadata = {
   title: "Portfolio",
+  description: "Track your holdings and P&L",
 };
 
-export default function Page() {
-  return (
-    <div className="p-6">
-      <h1 className="text-lg font-semibold tracking-tight">Portfolio</h1>
-      <p className="mt-2 text-xs text-muted-foreground">Coming in a later stage.</p>
-    </div>
-  );
+export default function PortfolioPage() {
+  return <PortfolioView />;
 }
