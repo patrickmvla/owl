@@ -6,7 +6,7 @@ import { usePrice } from "@/features/real-time/stores/price-store";
 import { calculatePortfolioPnL, type HoldingWithPnL } from "../services/pnl-calculator";
 import { formatPrice, formatPercent, formatNumber, formatCompact } from "@/lib/utils/format";
 import { AllocationDonut } from "./allocation-donut";
-import { usePriceVersion } from "@/features/real-time/stores/price-store";
+import { useThrottledPriceVersion } from "@/features/real-time/stores/price-store";
 import { priceStore } from "@/features/real-time/stores/price-store";
 import { useMemo } from "react";
 
@@ -68,7 +68,7 @@ interface HoldingsTableProps {
 
 export function HoldingsTable({ portfolioId }: HoldingsTableProps) {
   const { data: holdings, isLoading } = useHoldings(portfolioId);
-  const version = usePriceVersion(); // re-render when any price updates
+  const version = useThrottledPriceVersion(); // re-render when any price updates
 
   const summary = useMemo(() => {
     if (!holdings?.length) return null;

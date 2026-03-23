@@ -1,5 +1,3 @@
-"use client";
-
 import type { HoldingWithPnL } from "../services/pnl-calculator";
 
 const COLORS = [

@@ -143,23 +143,20 @@ export default function DashboardPage() {
 
 ---
 
-## Remediation Stage
+## Remediation — Stage 7.5 Progress
 
-This refactor becomes **Stage 7.5** — inserted between Stage 7 (Correlation) and Stage 8 (Settlement Optimizer).
+### Completed
+- [x] Suspense boundaries on dashboard (each section streams independently)
+- [x] `loading.tsx` for dashboard, market, coin detail routes (instant prefetched navigation)
+- [x] `@vercel/analytics` added to root layout (Web Vitals in production)
+- [x] `@next/bundle-analyzer` installed + `bun run analyze` script
+- [x] `GlobalStats` → Server Component (async, fetches directly, zero JS)
+- [x] `TrendingList` → Server Component (async, fetches directly, zero JS)
+- [x] Coin detail page split: Server Component page renders stats/description/links as HTML, client islands for header (live price, watchlist) and chart (Lightweight Charts)
 
-**Stage 7.5: Performance Refactor**
-
-| Task | Files Affected | Complexity |
-|------|---------------|-----------|
-| Split client/server components | ~15 component files | High |
-| Add Suspense boundaries | ~5 page files | Medium |
-| Server-side data fetching | page.tsx files + services | Medium |
-| Hot path audit (useRef expansion) | ~4 components | Low |
-| Bundle analysis + fix | Config + investigation | Low |
-| Add `@vercel/analytics` | layout.tsx | Trivial |
-
-**Estimated effort:** 1 focused session for the client/server split. 1 session for Suspense + streaming. Half session for the rest.
-
-**Why not now:** Stage 7 is mid-flight with Binance REST, correlation engine, portfolio enhancements, RFC 7807 errors, currency converter, dashboard redesign, and market page upgrades. Adding a refactor that touches 15+ files would create a massive PR that's hard to review. Better to ship Stage 7, then do a clean refactor stage.
+### Remaining (deferred)
+- [ ] `cacheComponents: true` (PPR) — blocked by `usePathname()` in icon rail layout
+- [ ] Hot path audit — expand `useRef` pattern to PortfolioSnapshot, WatchlistMoversMini
+- [ ] Bundle analysis — run `bun run analyze` and optimize any oversized chunks
 
 **Why before Stage 8:** The settlement optimizer (Stage 8) will add more pages. Refactoring after Stage 8 means more files to touch. The performance debt compounds — fix it before it grows.

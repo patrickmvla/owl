@@ -5,7 +5,7 @@ import { Plus, X } from "@phosphor-icons/react";
 import { useWatchlists, useCreateWatchlist, useWatchlistItems, useAddWatchlistItem, useRemoveWatchlistItem } from "../hooks/use-watchlist";
 import { CoinCombobox } from "./coin-combobox";
 import { PriceDisplay } from "@/ui/primitives/price-display";
-import { usePrice, usePriceVersion } from "@/features/real-time/stores/price-store";
+import { usePrice, useThrottledPriceVersion } from "@/features/real-time/stores/price-store";
 import { priceStore } from "@/features/real-time/stores/price-store";
 import { formatPercent } from "@/lib/utils/format";
 import { PriceChart } from "@/features/market/components/price-chart";
@@ -70,7 +70,7 @@ function WatchlistItemRow({
 }
 
 function WatchlistSummary({ items }: { items: any[] }) {
-  const version = usePriceVersion();
+  const version = useThrottledPriceVersion();
 
   const stats = useMemo(() => {
     const store = priceStore.getState();

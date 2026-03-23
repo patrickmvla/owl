@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { WatchlistView } from "@/features/watchlist/components/watchlist-view";
 
 export const metadata: Metadata = {
@@ -6,5 +7,15 @@ export const metadata: Metadata = {
 };
 
 export default function WatchlistPage() {
-  return <WatchlistView />;
+  return (
+    <Suspense fallback={
+      <div className="p-6 space-y-2">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-10 animate-pulse rounded-sm bg-card" />
+        ))}
+      </div>
+    }>
+      <WatchlistView />
+    </Suspense>
+  );
 }
