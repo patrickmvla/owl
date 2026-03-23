@@ -6,6 +6,7 @@ import {
   getMarketChart,
   getTrending,
   searchCoins,
+  getExchangeRates,
 } from "../services/coingecko-client";
 import {
   CoinsQuerySchema,
@@ -181,5 +182,29 @@ export const marketRoutes = new OpenAPIHono()
       c.header("Cache-Control", "public, s-maxage=300, stale-while-revalidate=60");
 
       return c.json(results, 200);
+    },
+  )
+
+  /** Exchange rates */
+  .openapi(
+    createRoute({
+      method: "get",
+      path: "/exchange-rates",
+      tags: ["Market"],
+      summary: "Exchange rates",
+      description: "BTC-base exchange rates for currency conversion (CoinGecko)",
+      responses: {
+        200: {
+          content: { "application/json": { schema: z.any() } },
+          description: "Exchange rates keyed by currency code",
+        },
+      },
+    }),
+    async (c) => {
+      const rates = await getExchangeRates();
+
+      c.header("Cache-Control", "public, s-maxage=300, stale-while-revalidate=60");
+
+      return c.json(rates, 200);
     },
   );

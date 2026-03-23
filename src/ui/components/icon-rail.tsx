@@ -10,6 +10,7 @@ import {
   ListStar,
   Bell,
   CurrencyDollar,
+  GitBranch,
   Gear,
   type Icon,
 } from "@phosphor-icons/react";
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { href: "/watchlist", label: "Watchlist", icon: ListStar },
   { href: "/peg", label: "Peg Monitor", icon: Eye },
   { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/correlation", label: "Correlation", icon: GitBranch },
   { href: "/settlement", label: "Settlement", icon: CurrencyDollar },
 ];
 
