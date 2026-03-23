@@ -1,27 +1,21 @@
-"use client";
+import { getTrending } from "../services/coingecko-client";
 
-import { useMarketOverview } from "../hooks/use-market-overview";
+/**
+ * Server Component — fetches trending coins directly.
+ * Pure HTML, zero JS. No hooks, no state.
+ *
+ * ADR-005 Principle 1: "Server-first rendering. Client JS is a tax."
+ */
+export async function TrendingList() {
+  const trending = await getTrending();
 
-export function TrendingList() {
-  const { data, isLoading } = useMarketOverview();
-
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-8 animate-pulse rounded-sm bg-card" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!data?.trending?.length) return null;
+  if (!trending?.length) return null;
 
   return (
     <div className="space-y-1">
       <span className="label-micro">Trending</span>
       <div className="space-y-0.5">
-        {data.trending.slice(0, 7).map((coin, i) => (
+        {trending.slice(0, 7).map((coin, i) => (
           <div
             key={coin.item.id}
             className="flex items-center gap-3 rounded-sm px-2 py-1.5 hover:bg-muted"

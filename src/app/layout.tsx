@@ -3,6 +3,7 @@ import { Geist, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils/cn";
 import { QueryProvider } from "@/lib/providers/query-provider";
+import { Analytics } from "@vercel/analytics/react";
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
@@ -36,6 +37,7 @@ export default function RootLayout({
     >
       <body className="h-dvh overflow-hidden">
           <QueryProvider>{children}</QueryProvider>
+          <Analytics />
       </body>
     </html>
   );

@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
 import { usePortfolios } from "../hooks/use-portfolios";
 import { useHoldings } from "../hooks/use-holdings";
-import { usePriceVersion } from "@/features/real-time/stores/price-store";
+import { useThrottledPriceVersion } from "@/features/real-time/stores/price-store";
 import { priceStore } from "@/features/real-time/stores/price-store";
 import { calculatePortfolioPnL } from "../services/pnl-calculator";
 import { formatPrice, formatPercent } from "@/lib/utils/format";
@@ -14,7 +14,7 @@ export function PortfolioSnapshot() {
   const { data: portfolios, isLoading: loadingPortfolios } = usePortfolios();
   const activePortfolio = portfolios?.[0];
   const { data: holdings, isLoading: loadingHoldings } = useHoldings(activePortfolio?.id ?? "");
-  const version = usePriceVersion();
+  const version = useThrottledPriceVersion();
 
   const summary = useMemo(() => {
     if (!holdings?.length) return null;

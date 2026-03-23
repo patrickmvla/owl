@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight } from "@phosphor-icons/react";
 import { useWatchlists, useWatchlistItems } from "../hooks/use-watchlist";
-import { usePriceVersion } from "@/features/real-time/stores/price-store";
+import { useThrottledPriceVersion } from "@/features/real-time/stores/price-store";
 import { priceStore } from "@/features/real-time/stores/price-store";
 import { formatPercent } from "@/lib/utils/format";
 import { PriceDisplay } from "@/ui/primitives/price-display";
@@ -13,7 +13,7 @@ export function WatchlistMoversMini() {
   const { data: watchlists } = useWatchlists();
   const activeWatchlist = watchlists?.[0];
   const { data: items } = useWatchlistItems(activeWatchlist?.id ?? "");
-  const version = usePriceVersion();
+  const version = useThrottledPriceVersion();
 
   const movers = useMemo(() => {
     if (!items?.length) return [];

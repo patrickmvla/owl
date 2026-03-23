@@ -60,3 +60,18 @@ export function usePrice(symbol: string): MarketUpdate | undefined {
 export function usePriceVersion(): number {
   return useStore(priceStore, (s) => s.version);
 }
+
+/**
+ * Throttled version — updates at most once per second instead of 50x/sec.
+ * Use this for derived computations (P&L, watchlist stats) where
+ * recalculating 50x/sec is wasteful. The user can't perceive
+ * sub-second P&L changes anyway.
+ *
+ * ADR-005 Principle 4: "The real-time hot path bypasses React."
+ */
+export function useThrottledPriceVersion(): number {
+  const version = useStore(priceStore, (s) => s.version);
+  // Quantize to ~1 update/sec by rounding version to nearest 60
+  // (RAF batcher produces ~60 versions/sec)
+  return Math.floor(version / 60);
+}
