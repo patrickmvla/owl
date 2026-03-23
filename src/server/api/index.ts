@@ -10,6 +10,9 @@ import { marketRoutes } from "@/features/market/api/market-routes";
 import { portfolioRoutes } from "@/features/portfolio/api/portfolio-routes";
 import { watchlistRoutes } from "@/features/watchlist/api/watchlist-routes";
 import { alertRoutes } from "@/features/alerts/api/alert-routes";
+import { binanceRoutes } from "@/features/market/api/binance-routes";
+import { correlationRoutes } from "@/features/correlation/api/correlation-routes";
+import { errors } from "@/lib/utils/errors";
 
 const app = new OpenAPIHono().basePath("/api");
 
@@ -32,6 +35,8 @@ app.route("/v0/market", marketRoutes);
 app.route("/v0/portfolio", portfolioRoutes);
 app.route("/v0/watchlist", watchlistRoutes);
 app.route("/v0/alerts", alertRoutes);
+app.route("/v0/binance", binanceRoutes);
+app.route("/v0/correlation", correlationRoutes);
 
 // Health endpoints
 app.get("/v0/health/public", (c) => {
@@ -42,7 +47,7 @@ app.get("/v0/health", async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
 
   if (!session) {
-    return c.json({ error: "Unauthorized" }, 401);
+    return c.json(errors.unauthorized(), 401);
   }
 
   return c.json({

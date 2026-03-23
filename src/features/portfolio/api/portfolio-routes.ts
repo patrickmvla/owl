@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import { z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 import { auth } from "@/features/auth/config/auth-server";
+import { errors } from "@/lib/utils/errors";
 import {
   CreatePortfolioSchema,
   CreateHoldingSchema,
@@ -47,7 +48,7 @@ export const portfolioRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
 
       const portfolios = await getPortfolios(userId);
       return c.json(portfolios, 200);
@@ -72,7 +73,7 @@ export const portfolioRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
 
       const { name } = c.req.valid("json");
       const result = await createPortfolio(userId, name);
@@ -99,11 +100,11 @@ export const portfolioRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
 
       const { id } = c.req.valid("param");
       const result = await deletePortfolio(userId, id);
-      if (!result) return c.json({ error: "Not found" }, 404);
+      if (!result) return c.json(errors.notFound("Portfolio"), 404);
       return c.json(result, 200);
     },
   )
@@ -127,11 +128,11 @@ export const portfolioRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
 
       const { id } = c.req.valid("param");
       const p = await getPortfolio(userId, id);
-      if (!p) return c.json({ error: "Forbidden" }, 403);
+      if (!p) return c.json(errors.forbidden(), 403);
 
       const holdings = await getHoldings(id);
       return c.json(holdings, 200);
@@ -160,11 +161,11 @@ export const portfolioRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
 
       const { id } = c.req.valid("param");
       const p = await getPortfolio(userId, id);
-      if (!p) return c.json({ error: "Forbidden" }, 403);
+      if (!p) return c.json(errors.forbidden(), 403);
 
       const body = c.req.valid("json");
       const result = await createHolding(id, body);
@@ -194,15 +195,15 @@ export const portfolioRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
 
       const { id, holdingId } = c.req.valid("param");
       const p = await getPortfolio(userId, id);
-      if (!p) return c.json({ error: "Forbidden" }, 403);
+      if (!p) return c.json(errors.forbidden(), 403);
 
       const body = c.req.valid("json");
       const result = await updateHolding(holdingId, body);
-      if (!result) return c.json({ error: "Not found" }, 404);
+      if (!result) return c.json(errors.notFound("Portfolio"), 404);
       return c.json(result, 200);
     },
   )
@@ -226,14 +227,14 @@ export const portfolioRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
 
       const { id, holdingId } = c.req.valid("param");
       const p = await getPortfolio(userId, id);
-      if (!p) return c.json({ error: "Forbidden" }, 403);
+      if (!p) return c.json(errors.forbidden(), 403);
 
       const result = await deleteHolding(holdingId);
-      if (!result) return c.json({ error: "Not found" }, 404);
+      if (!result) return c.json(errors.notFound("Portfolio"), 404);
       return c.json(result, 200);
     },
   );

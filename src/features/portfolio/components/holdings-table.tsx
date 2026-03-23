@@ -4,7 +4,8 @@ import { Trash } from "@phosphor-icons/react";
 import { useHoldings, useDeleteHolding } from "../hooks/use-holdings";
 import { usePrice } from "@/features/real-time/stores/price-store";
 import { calculatePortfolioPnL, type HoldingWithPnL } from "../services/pnl-calculator";
-import { formatPrice, formatPercent, formatNumber } from "@/lib/utils/format";
+import { formatPrice, formatPercent, formatNumber, formatCompact } from "@/lib/utils/format";
+import { AllocationDonut } from "./allocation-donut";
 import { usePriceVersion } from "@/features/real-time/stores/price-store";
 import { priceStore } from "@/features/real-time/stores/price-store";
 import { useMemo } from "react";
@@ -116,20 +117,46 @@ export function HoldingsTable({ portfolioId }: HoldingsTableProps) {
 
   const isPositive = summary.totalUnrealizedPnL >= 0;
 
+  const topHolding = [...summary.holdings].sort((a, b) => b.allocation - a.allocation)[0];
+
   return (
     <div className="space-y-4">
-      {/* Summary */}
-      <div className="flex items-baseline gap-4">
-        <div>
-          <span className="label-micro">Total Value</span>
-          <div className="text-2xl font-semibold tabular-nums">
-            {formatPrice(summary.totalCurrentValue)}
+      {/* Summary + Allocation */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto]">
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-4">
+          <div className="bg-background px-4 py-3 space-y-0.5">
+            <span className="label-micro">Total Value</span>
+            <div className="text-lg font-semibold tabular-nums">
+              {formatCompact(summary.totalCurrentValue)}
+            </div>
+          </div>
+          <div className="bg-background px-4 py-3 space-y-0.5">
+            <span className="label-micro">Unrealized P&L</span>
+            <div className={`text-sm font-semibold tabular-nums ${isPositive ? "price-up" : "price-down"}`}>
+              {formatPrice(summary.totalUnrealizedPnL)}
+              <span className="text-[10px] ml-1">({formatPercent(summary.totalUnrealizedPnLPercent)})</span>
+            </div>
+          </div>
+          <div className="bg-background px-4 py-3 space-y-0.5">
+            <span className="label-micro">Cost Basis</span>
+            <div className="text-sm font-medium tabular-nums text-muted-foreground">
+              {formatCompact(summary.totalCostValue)}
+            </div>
+          </div>
+          <div className="bg-background px-4 py-3 space-y-0.5">
+            <span className="label-micro">Top Holding</span>
+            <div className="text-sm font-medium">
+              {topHolding ? `${topHolding.symbol} ${topHolding.allocation.toFixed(0)}%` : "—"}
+            </div>
           </div>
         </div>
-        <div>
-          <span className="label-micro">Unrealized P&L</span>
-          <div className={`text-lg font-semibold tabular-nums ${isPositive ? "price-up" : "price-down"}`}>
-            {formatPrice(summary.totalUnrealizedPnL)} ({formatPercent(summary.totalUnrealizedPnLPercent)})
+
+        {/* Allocation donut */}
+        <div className="border border-border bg-background p-4">
+          <span className="label-micro">Allocation</span>
+          <div className="mt-2">
+            <AllocationDonut holdings={summary.holdings} />
           </div>
         </div>
       </div>

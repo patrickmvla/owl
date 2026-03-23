@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import { z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 import { auth } from "@/features/auth/config/auth-server";
+import { errors } from "@/lib/utils/errors";
 import {
   AlertParamsSchema,
   CreateAlertSchema,
@@ -31,7 +32,7 @@ export const alertRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const rules = await getAlertRules(userId);
       return c.json(rules, 200);
     },
@@ -48,7 +49,7 @@ export const alertRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const body = c.req.valid("json");
       const result = await createAlertRule(userId, body);
       return c.json(result, 201);
@@ -66,11 +67,11 @@ export const alertRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const { id } = c.req.valid("param");
       const { active } = c.req.valid("json");
       const result = await toggleAlertRule(userId, id, active);
-      if (!result) return c.json({ error: "Not found" }, 404);
+      if (!result) return c.json(errors.notFound(), 404);
       return c.json(result, 200);
     },
   )
@@ -86,10 +87,10 @@ export const alertRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const { id } = c.req.valid("param");
       const result = await deleteAlertRule(userId, id);
-      if (!result) return c.json({ error: "Not found" }, 404);
+      if (!result) return c.json(errors.notFound(), 404);
       return c.json(result, 200);
     },
   );

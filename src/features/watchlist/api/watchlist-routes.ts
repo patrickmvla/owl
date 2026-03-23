@@ -2,6 +2,7 @@ import { OpenAPIHono, createRoute } from "@hono/zod-openapi";
 import { z } from "@hono/zod-openapi";
 import type { Context } from "hono";
 import { auth } from "@/features/auth/config/auth-server";
+import { errors } from "@/lib/utils/errors";
 import {
   WatchlistParamsSchema,
   ItemParamsSchema,
@@ -35,7 +36,7 @@ export const watchlistRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const result = await getWatchlists(userId);
       return c.json(result, 200);
     },
@@ -52,7 +53,7 @@ export const watchlistRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const { name } = c.req.valid("json");
       const result = await createWatchlist(userId, name);
       return c.json(result, 201);
@@ -70,10 +71,10 @@ export const watchlistRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const { id } = c.req.valid("param");
       const result = await deleteWatchlist(userId, id);
-      if (!result) return c.json({ error: "Not found" }, 404);
+      if (!result) return c.json(errors.notFound(), 404);
       return c.json(result, 200);
     },
   )
@@ -89,10 +90,10 @@ export const watchlistRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const { id } = c.req.valid("param");
       const w = await getWatchlist(userId, id);
-      if (!w) return c.json({ error: "Forbidden" }, 403);
+      if (!w) return c.json(errors.forbidden(), 403);
       const items = await getWatchlistItems(id);
       return c.json(items, 200);
     },
@@ -109,10 +110,10 @@ export const watchlistRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const { id } = c.req.valid("param");
       const w = await getWatchlist(userId, id);
-      if (!w) return c.json({ error: "Forbidden" }, 403);
+      if (!w) return c.json(errors.forbidden(), 403);
       const body = c.req.valid("json");
       const result = await addWatchlistItem(id, body);
       return c.json(result, 201);
@@ -130,12 +131,12 @@ export const watchlistRoutes = new OpenAPIHono()
     }),
     async (c) => {
       const userId = await getUserId(c);
-      if (!userId) return c.json({ error: "Unauthorized" }, 401);
+      if (!userId) return c.json(errors.unauthorized(), 401);
       const { id, itemId } = c.req.valid("param");
       const w = await getWatchlist(userId, id);
-      if (!w) return c.json({ error: "Forbidden" }, 403);
+      if (!w) return c.json(errors.forbidden(), 403);
       const result = await removeWatchlistItem(itemId);
-      if (!result) return c.json({ error: "Not found" }, 404);
+      if (!result) return c.json(errors.notFound(), 404);
       return c.json(result, 200);
     },
   );
