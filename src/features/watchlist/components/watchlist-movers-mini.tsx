@@ -8,8 +8,10 @@ import { useThrottledPriceVersion } from "@/features/real-time/stores/price-stor
 import { priceStore } from "@/features/real-time/stores/price-store";
 import { formatPercent } from "@/lib/utils/format";
 import { PriceDisplay } from "@/ui/primitives/price-display";
+import { useMounted } from "@/lib/hooks/use-mounted";
 
 export function WatchlistMoversMini() {
+  const mounted = useMounted();
   const { data: watchlists } = useWatchlists();
   const activeWatchlist = watchlists?.[0];
   const { data: items } = useWatchlistItems(activeWatchlist?.id ?? "");
@@ -31,6 +33,10 @@ export function WatchlistMoversMini() {
       .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
       .slice(0, 4);
   }, [items, version]);
+
+  if (!mounted) {
+    return <div className="h-20 animate-pulse rounded-sm bg-card" />;
+  }
 
   if (!activeWatchlist) {
     return (

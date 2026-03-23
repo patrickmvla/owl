@@ -1,6 +1,7 @@
 "use client";
 
 import { usePegMonitor } from "../hooks/use-peg-monitor";
+import { useMounted } from "@/lib/hooks/use-mounted";
 import { PegHealthBadge } from "@/ui/primitives/peg-health-badge";
 import { formatPrice } from "@/lib/utils/format";
 import { DeviationChart } from "./deviation-chart";
@@ -45,7 +46,25 @@ function PegCard({ peg }: { peg: PegData }) {
 }
 
 export function PegDashboard() {
+  const mounted = useMounted();
   const { pegs, worstStatus } = usePegMonitor();
+
+  if (!mounted) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="border-b border-border px-6 py-3">
+          <h1 className="text-sm font-semibold">Peg Monitor</h1>
+        </div>
+        <div className="flex-1 p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {[...Array(7)].map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-sm bg-card" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">

@@ -2,9 +2,15 @@
 
 import Link from "next/link";
 import { usePegMonitor } from "../hooks/use-peg-monitor";
+import { useMounted } from "@/lib/hooks/use-mounted";
 
 export function PegStatusMini() {
+  const mounted = useMounted();
   const { pegs, worstStatus } = usePegMonitor();
+
+  if (!mounted) {
+    return <div className="h-20 animate-pulse rounded-sm bg-card" />;
+  }
 
   const borderClass =
     worstStatus === "critical"

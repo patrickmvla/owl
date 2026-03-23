@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMounted } from "@/lib/hooks/use-mounted";
 import { useMemo } from "react";
 import { ArrowRight } from "@phosphor-icons/react";
 import { usePortfolios } from "../hooks/use-portfolios";
@@ -11,6 +12,7 @@ import { calculatePortfolioPnL } from "../services/pnl-calculator";
 import { formatPrice, formatPercent } from "@/lib/utils/format";
 
 export function PortfolioSnapshot() {
+  const mounted = useMounted();
   const { data: portfolios, isLoading: loadingPortfolios } = usePortfolios();
   const activePortfolio = portfolios?.[0];
   const { data: holdings, isLoading: loadingHoldings } = useHoldings(activePortfolio?.id ?? "");
@@ -41,7 +43,7 @@ export function PortfolioSnapshot() {
     );
   }, [holdings, version]);
 
-  if (loadingPortfolios || loadingHoldings) {
+  if (!mounted || loadingPortfolios || loadingHoldings) {
     return <div className="h-20 animate-pulse rounded-sm bg-card" />;
   }
 
