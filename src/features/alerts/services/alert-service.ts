@@ -18,6 +18,8 @@ export async function createAlertRule(
     condition: "price_above" | "price_below" | "peg_deviation";
     threshold: string;
     notify_via?: "in_app" | "email" | "webhook" | undefined;
+    webhook_url?: string | undefined;
+    webhook_secret?: string | undefined;
   },
 ) {
   const values: Record<string, unknown> = {
@@ -30,6 +32,12 @@ export async function createAlertRule(
 
   if (data.notify_via != null) {
     values.notifyVia = data.notify_via;
+  }
+  if (data.webhook_url != null) {
+    values.webhookUrl = data.webhook_url;
+  }
+  if (data.webhook_secret != null) {
+    values.webhookSecret = data.webhook_secret;
   }
 
   const [result] = await db

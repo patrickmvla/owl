@@ -12,6 +12,8 @@ export const CreateAlertSchema = z.object({
   condition: z.enum(["price_above", "price_below", "peg_deviation"]).openapi({ example: "price_above" }),
   threshold: z.string().openapi({ example: "50000" }),
   notify_via: z.enum(["in_app", "email", "webhook"]).default("in_app").optional(),
+  webhook_url: z.string().url().optional(),
+  webhook_secret: z.string().min(16).optional(),
 }).openapi("CreateAlert");
 
 export const ToggleAlertSchema = z.object({

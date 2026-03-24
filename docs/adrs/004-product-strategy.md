@@ -122,8 +122,8 @@ graph TB
             USDT["USDT<br/>peg: $1.00"]
             DAI["DAI<br/>peg: $1.00"]
             PYUSD["PYUSD<br/>peg: $1.00"]
-            BUSD["BUSD<br/>peg: $1.00"]
-            USDB["USDB (Bridge)<br/>peg: $1.00"]
+            FDUSD["FDUSD<br/>peg: $1.00"]
+            TUSD["TUSD<br/>peg: $1.00"]
         end
 
         subgraph EUR_Pegged["EUR-Pegged"]
@@ -273,7 +273,7 @@ sequenceDiagram
 |---------|---------------|-------------------|
 | Dashboard | USD prices | Multi-currency (35+ fiats), user-preferred currency |
 | Portfolio tracker | Holdings in USD | Multi-currency holdings and P&L |
-| Peg monitor | USDC, USDT | All 7 stablecoins (USDC, USDT, DAI, EURC, PYUSD, USDB, BUSD), multi-peg (USD + EUR) |
+| Peg monitor | USDC, USDT | All 7 stablecoins (USDC, USDT, DAI, EURC, PYUSD, FDUSD, TUSD), multi-peg (USD + EUR) |
 | Settlement optimizer | Fiat vs stablecoin | Multi-currency, multi-chain (7 chains), gas fee comparison, Base prioritized |
 | Correlation engine | BTC vs NASDAQ | Same (no change) |
 | Alerts | Email + in-app | + Webhook delivery for programmatic consumers |

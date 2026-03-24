@@ -13,6 +13,7 @@ import { alertRoutes } from "@/features/alerts/api/alert-routes";
 import { binanceRoutes } from "@/features/market/api/binance-routes";
 import { correlationRoutes } from "@/features/correlation/api/correlation-routes";
 import { settlementRoutes } from "@/features/settlement/api/settlement-routes";
+import { finnhubRoutes } from "@/features/market/api/finnhub-routes";
 import { errors } from "@/lib/utils/errors";
 
 const app = new OpenAPIHono().basePath("/api");
@@ -39,6 +40,7 @@ app.route("/v0/alerts", alertRoutes);
 app.route("/v0/binance", binanceRoutes);
 app.route("/v0/correlation", correlationRoutes);
 app.route("/v0/settlement", settlementRoutes);
+app.route("/v0/stocks", finnhubRoutes);
 
 // Health endpoints
 app.get("/v0/health/public", (c) => {

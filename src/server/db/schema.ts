@@ -165,6 +165,8 @@ export const alertRule = pgTable("alert_rule", {
   condition: alertConditionEnum("condition").notNull(),
   threshold: numeric("threshold", { precision: 20, scale: 8 }).notNull(),
   notifyVia: notifyChannelEnum("notify_via").notNull().default("in_app"),
+  webhookUrl: text("webhook_url"), // URL to POST when notify_via = "webhook"
+  webhookSecret: text("webhook_secret"), // HMAC signing secret for webhook payloads
   active: boolean("active").notNull().default(true),
   lastTriggeredAt: timestamp("last_triggered_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
