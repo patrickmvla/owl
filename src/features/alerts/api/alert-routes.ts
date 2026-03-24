@@ -93,4 +93,42 @@ export const alertRoutes = new OpenAPIHono()
       if (!result) return c.json(errors.notFound(), 404);
       return c.json(result, 200);
     },
+  )
+
+  /** Trigger alert evaluation for a symbol */
+  .openapi(
+    createRoute({
+      method: "post",
+      path: "/trigger",
+      tags: ["Alerts"],
+      summary: "Trigger alert evaluation",
+      description: "Evaluate active alerts for a symbol against the current price. Dispatches webhooks if configured.",
+      request: {
+        body: {
+          content: {
+            "application/json": {
+              schema: z.object({
+                symbol: z.string().openapi({ example: "BTC" }),
+                price: z.number().openapi({ example: 70000 }),
+              }),
+            },
+          },
+        },
+      },
+      responses: {
+        200: { content: { "application/json": { schema: z.any() } }, description: "Trigger results" },
+      },
+    }),
+    async (c) => {
+      const { symbol, price } = c.req.valid("json");
+      const { evaluateAndTrigger } = await import("../services/alert-evaluator");
+      const results = await evaluateAndTrigger(symbol, price);
+
+      return c.json({
+        symbol,
+        price,
+        triggered: results.length,
+        results,
+      }, 200);
+    },
   );

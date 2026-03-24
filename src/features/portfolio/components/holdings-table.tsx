@@ -6,19 +6,27 @@ import { usePrice } from "@/features/real-time/stores/price-store";
 import { calculatePortfolioPnL, type HoldingWithPnL } from "../services/pnl-calculator";
 import { formatPrice, formatPercent, formatNumber, formatCompact } from "@/lib/utils/format";
 import { AllocationDonut } from "./allocation-donut";
+import { Sparkline } from "@/ui/primitives/sparkline";
 import { useThrottledPriceVersion } from "@/features/real-time/stores/price-store";
 import { priceStore } from "@/features/real-time/stores/price-store";
+import { useHoldingSparklines } from "../hooks/use-holding-sparklines";
 import { useMemo } from "react";
+import { useMounted } from "@/lib/hooks/use-mounted";
 
 function HoldingRow({
   holding,
   portfolioId,
+  sparklineData,
+  dayChange,
 }: {
   holding: HoldingWithPnL;
   portfolioId: string;
+  sparklineData?: number[] | undefined;
+  dayChange?: number | undefined;
 }) {
   const deleteHolding = useDeleteHolding(portfolioId);
   const isPositive = holding.unrealizedPnL >= 0;
+  const isDayPositive = (dayChange ?? 0) >= 0;
 
   return (
     <tr className="border-b border-border/50 hover:bg-muted/50 transition-colors">
@@ -34,13 +42,10 @@ function HoldingRow({
         {formatNumber(holding.quantity, holding.assetType === "crypto" ? 6 : 2)}
       </td>
       <td className="py-2.5 px-4 text-right tabular-nums text-xs">
-        {formatPrice(holding.avgCostBasis)}
-      </td>
-      <td className="py-2.5 px-4 text-right tabular-nums text-xs">
         {holding.currentPrice > 0 ? formatPrice(holding.currentPrice) : "—"}
       </td>
-      <td className="py-2.5 px-4 text-right tabular-nums text-xs">
-        {formatPrice(holding.currentValue)}
+      <td className={`py-2.5 px-4 text-right tabular-nums text-xs ${isDayPositive ? "price-up" : "price-down"}`}>
+        {dayChange != null ? formatPercent(dayChange) : "—"}
       </td>
       <td className={`py-2.5 px-4 text-right tabular-nums text-xs ${isPositive ? "price-up" : "price-down"}`}>
         <div>{formatPrice(holding.unrealizedPnL)}</div>
@@ -49,11 +54,14 @@ function HoldingRow({
       <td className="py-2.5 px-4 text-right tabular-nums text-xs">
         {holding.allocation.toFixed(1)}%
       </td>
-      <td className="py-2.5 pl-4">
+      <td className="py-2.5 px-2">
+        {sparklineData && <Sparkline data={sparklineData} width={60} height={24} />}
+      </td>
+      <td className="py-2.5 pl-2">
         <button
           onClick={() => deleteHolding.mutate(holding.id)}
           disabled={deleteHolding.isPending}
-          className="text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+          className="cursor-pointer text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
         >
           <Trash size={14} />
         </button>
@@ -67,8 +75,16 @@ interface HoldingsTableProps {
 }
 
 export function HoldingsTable({ portfolioId }: HoldingsTableProps) {
+  const mounted = useMounted();
   const { data: holdings, isLoading } = useHoldings(portfolioId);
-  const version = useThrottledPriceVersion(); // re-render when any price updates
+  const version = useThrottledPriceVersion();
+
+  // Fetch sparkline data for all held symbols
+  const holdingSymbols = useMemo(
+    () => (holdings ?? []).map((h: any) => h.symbol as string),
+    [holdings],
+  );
+  const { data: sparklines } = useHoldingSparklines(holdingSymbols);
 
   const summary = useMemo(() => {
     if (!holdings?.length) return null;
@@ -168,18 +184,27 @@ export function HoldingsTable({ portfolioId }: HoldingsTableProps) {
             <tr className="border-b border-border text-muted-foreground">
               <th className="label-micro py-2 pr-4 text-left">Symbol</th>
               <th className="label-micro py-2 px-4 text-right">Qty</th>
-              <th className="label-micro py-2 px-4 text-right">Cost Basis</th>
               <th className="label-micro py-2 px-4 text-right">Price</th>
-              <th className="label-micro py-2 px-4 text-right">Value</th>
+              <th className="label-micro py-2 px-4 text-right">Day</th>
               <th className="label-micro py-2 px-4 text-right">P&L</th>
               <th className="label-micro py-2 px-4 text-right">Alloc</th>
-              <th className="label-micro py-2 pl-4 text-right w-8" />
+              <th className="label-micro py-2 px-2 text-right w-[60px]">7d</th>
+              <th className="label-micro py-2 pl-2 w-6" />
             </tr>
           </thead>
           <tbody>
-            {summary.holdings.map((h) => (
-              <HoldingRow key={h.id} holding={h} portfolioId={portfolioId} />
-            ))}
+            {summary.holdings.map((h) => {
+              const wsUpdate = priceStore.getState().prices.get(`${h.symbol}/USDT`);
+              return (
+                <HoldingRow
+                  key={h.id}
+                  holding={h}
+                  portfolioId={portfolioId}
+                  sparklineData={sparklines?.get(h.symbol)}
+                  dayChange={wsUpdate?.change24h}
+                />
+              );
+            })}
           </tbody>
         </table>
       </div>
